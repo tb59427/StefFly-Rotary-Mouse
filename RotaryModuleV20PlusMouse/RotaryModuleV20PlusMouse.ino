@@ -45,7 +45,7 @@ const int Mouse_Move_Distance = 10;
 Encoder myEnc(3, 2);
 long oldPosition  = -999;
 unsigned long positionExtTime1 = 0;
-unsigned long positionExtTimePrev1 = 0;
+unsigned long positionExtTimePrev1 = 0; 
 
 
 // These are the pins to which the rotary encoder 2 is connected.
@@ -77,7 +77,7 @@ unsigned long checktime = 0;
 #define SLOW  1
 
 #define FAST_THRESH 200
-#define SUPER_FAST_THRESH 150
+#define SUPER_FAST_THRESH 120
 
 void setup() {
   pinMode(Encoder_Button1, INPUT_PULLUP);
@@ -93,16 +93,19 @@ void setup() {
 
 unsigned long calculateAcceleration(unsigned long previousDelta, unsigned long currentDelta) {
 
+  if (currentDelta < SUPER_FAST_THRESH) {
+    return SUPER_FAST;
+  }
+  if (currentDelta < FAST_THRESH) {
+    return FAST;
+  }
   if (previousDelta > currentDelta) {
     return FAST;
   }
-  else if (currentDelta > previousDelta) {
-    return SLOW;
+  if (currentDelta > previousDelta) {
+    SLOW;
   }
-  else {
-    return NORMAL;
-  }
-  
+  return NORMAL;
 }
 
 void loop() {
