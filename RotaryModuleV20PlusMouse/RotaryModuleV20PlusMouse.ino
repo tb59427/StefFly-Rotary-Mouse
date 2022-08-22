@@ -2,11 +2,7 @@
 // This tutorial was very helpful: http://www.loiph.in/2014/09/arduino-leonardo-atmega32u4-based-usb.html
 // Modified by Stefan Langer; www.stefly.aero
 // modified by Torsten Beyer to improve debouncing by checking millis between changes in readings
-// simple mouse acceleration implemented
-
-// Improvement backlog:
-// - double click X to exit xcsoar
-// - double click left encoder for flight settings? 
+// linear mouse acceleration implemented
 
 
 // The rotary encoder library http://www.pjrc.com/teensy/td_libs_Encoder.html
@@ -28,7 +24,7 @@ int Fn_Button = 14;
 int QuickMenu = 16;
 int ESC = 15;
 
-// debounce delay for key/encoder pushes
+// debounce delay for key pushes
 int debounce_delay = 300;
 
 // definitions for mouse move (toggled via FN button)
@@ -36,8 +32,33 @@ boolean mouse_active = false;
 boolean return_to_mouse_mode = false; 
 const int Mouse_Move_Distance = 10;
 
+// variables for mouse acceleration calculation
+unsigned long mouseticks = 0;     //mouse move distance
 
-// These are the pins to which the rotary encoder 1 is connected.
+// Stuff for acceleration of mouse pointer 
+// at 200ms or slower, there should be no acceleration.
+// CHANGE if you want different timing
+constexpr float longCutoff = 200;
+constexpr float minMouseMove = Mouse_Move_Distance;
+
+// at 30 ms, we want to have maximum mouse move distance
+// CHANGE if you want different timing
+constexpr float shortCutoff = 30;
+constexpr float maxMouseMove = 3*Mouse_Move_Distance;
+
+// To derive the calc. constants, compute as follows:
+// Resolve a linear formular f(x) = a * x + b;
+// f(x) delivers the mouse move distance for a given timing of x (time between 2 successive reads)
+// f(x) with x > longCutOff is fixed at minMouseMove / f(x) with x < shortCutoff is fixed at maxMouseMove
+// in other words: no acceleration beyon shortCutoff and no deceleration beyond longCutoff
+// where  f(longCutoff)=minMouseMove and f(shortCutoff)=maxMouseMove
+// ONLY CHANGE if you want different behaviour (i.e. non-linear acceleration between longCutoff and shortCutoff
+
+constexpr float a = (maxMouseMove - minMouseMove)/(shortCutoff - longCutoff);
+constexpr float b = shortCutoff - a*maxMouseMove;
+
+
+// These are the pins to which the rotary encoder 0 is connected.
 // Pins 2,3 are the interrupt pins on a Leonardo/Uno, which give best performance with a rotary encoder.
 // Use other pins if you wish, but performance may suffer.
 // Avoid using pins that have LED's attached.
@@ -46,9 +67,11 @@ Encoder myEnc(3, 2);
 long oldPosition  = -999;
 unsigned long positionExtTime1 = 0;
 unsigned long positionExtTimePrev1 = 0; 
+unsigned long previousMoveTime1 = 0;
+unsigned long currentMoveTime1= 0;
 
 
-// These are the pins to which the rotary encoder 2 is connected.
+// These are the pins to which the rotary encoder 1 is connected.
 // Pins 0,1 are the interrupt pins on a Leonardo/Uno, which give best performance with a rotary encoder.
 // Use other pins if you wish, but performance may suffer.
 // Avoid using pins that have LED's attached.
@@ -58,26 +81,17 @@ long oldPosition2  = -999;
 boolean isSTF = false;
 unsigned long positionExtTime2 = 0;
 unsigned long positionExtTimePrev2 = 0;
-unsigned long previousMoveTime1 = 0;
-unsigned long currentMoveTime1= 0;
+
 unsigned long previousMoveTime2 = 0;
 unsigned long currentMoveTime2 = 0;
 
 // Globs (should really be part of the Encoder class) for debouncing
-unsigned long debounceTime = 80;   //min ms between two accepted reads with different reading
+unsigned long debounceTime = 30;    //min ms between two accepted reads with different reading
 unsigned long readingDelta1 = 0;    //holds the time between two consecutive Rotary Encoder1 Readings
 unsigned long readingDelta2 = 0;    //holds the time between two consecutive Rotary Encoder1 Readings
 
-unsigned long acceleration = 0;     //current accel based on Encoder acceleration
 unsigned long checktime = 0;
 
-#define SUPER_FAST 4
-#define FAST 3
-#define NORMAL 2
-#define SLOW  1
-
-#define FAST_THRESH 200
-#define SUPER_FAST_THRESH 120
 
 void setup() {
   pinMode(Encoder_Button1, INPUT_PULLUP);
@@ -93,19 +107,26 @@ void setup() {
 
 unsigned long calculateAcceleration(unsigned long previousDelta, unsigned long currentDelta) {
 
-  if (currentDelta < SUPER_FAST_THRESH) {
-    return SUPER_FAST;
-  }
-  if (currentDelta < FAST_THRESH) {
-    return FAST;
-  }
-  if (previousDelta > currentDelta) {
-    return FAST;
-  }
-  if (currentDelta > previousDelta) {
-    SLOW;
-  }
-  return NORMAL;
+    unsigned long ms = currentDelta;
+    float ticks;
+    
+    if (ms < longCutoff) {
+      // do some acceleration using factors a and b
+
+      // limit to maximum acceleration
+      if (currentDelta < shortCutoff) {
+        ms = shortCutoff;
+      }
+
+      ticks = a*ms + b;
+
+      return (unsigned long) ticks;
+
+    }
+    else {
+      return Mouse_Move_Distance;
+    }
+
 }
 
 void loop() {
@@ -125,11 +146,11 @@ void loop() {
 
     // if time between changed readings is > debounceTime, we assume a non-bouncing read and do something
     if (readingDelta1 > debounceTime) {
-      acceleration = calculateAcceleration (previousMoveTime1,currentMoveTime1);
+      mouseticks = calculateAcceleration (previousMoveTime1,currentMoveTime1);
 
       if (newPosition > oldPosition) {
         if (mouse_active) {
-            Mouse.move(0, -acceleration*Mouse_Move_Distance);
+            Mouse.move(0, -mouseticks);
         }
         else {
             Keyboard.write(KEY_UP_ARROW);
@@ -137,7 +158,7 @@ void loop() {
       }
       if (oldPosition > newPosition) {
         if (mouse_active) {
-            Mouse.move(0, Mouse_Move_Distance);
+            Mouse.move(0, mouseticks);
         }
         else {
             Keyboard.write(KEY_DOWN_ARROW);
@@ -163,11 +184,11 @@ void loop() {
     // if time between changed readings is > debounceTime, we assume a non-bouncing read and do something
     if (readingDelta2 > debounceTime) {
 
-      acceleration = calculateAcceleration (previousMoveTime1,currentMoveTime1);     
+      mouseticks = calculateAcceleration (previousMoveTime2,currentMoveTime2);     
 
       if (newPosition2 > oldPosition2) {
         if (mouse_active) {
-            Mouse.move(-acceleration * Mouse_Move_Distance, 0);
+            Mouse.move(-mouseticks, 0);
         }
         else {
             Keyboard.write(KEY_LEFT_ARROW);
@@ -175,7 +196,7 @@ void loop() {
       }
       if (oldPosition2 > newPosition2) {
         if (mouse_active) {
-            Mouse.move(Mouse_Move_Distance, 0);
+            Mouse.move(mouseticks, 0);
         }
         else {
             Keyboard.write(KEY_RIGHT_ARROW);
@@ -188,7 +209,7 @@ void loop() {
   if (digitalRead(Encoder_Button1) == LOW) {
     if (mouse_active) {
       Mouse.click();
-      delay(debounce_delay);
+      //delay(debounce_delay);
     } else {
       Keyboard.write(KEY_RETURN);  // send a 'return' to the computer via Keyboard HID
       delay(debounce_delay);  // delay so there aren't a kajillion key presses
