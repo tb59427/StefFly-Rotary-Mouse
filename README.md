@@ -17,6 +17,7 @@ A simple linear mouse acceleration logic has been added to allow for faster mous
 linear function defined by the min time/max move and max time/min move points on a simple linear graph (see function `calculateAcceleration` for details.
 
 Cleanup covers mostly code fragments oviously left over from some previous versions of the file(s) and compression of the main if-then-else logic around
-mouse active in the main loop. Still some cleanup to do.
+mouse active in the main loop. Still mre cleanup to do - mainly moving all encoder specific stuff into Encoder class and add more methods to encoder class
+if needed.
 
 Use at your own risk.
