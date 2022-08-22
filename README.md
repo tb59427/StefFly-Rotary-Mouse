@@ -12,8 +12,8 @@ benefit from a similar logic.
 Changed behaviour of "M" button:
 In case move movements are active and M is pressed, mouse mode is suspended. I.e. normal "menu moves" apply while in the menu. Pressing "X" will restore
 mouse mode. BEWARE - this does not always work as expected: if you select anything from within this menu and then close the following dialog xcsoar
-switches back to map display and the mouse continues to be turned off. Still I find this helpful since you don't have to think about switch mouse mode off
-when hitting M.
+switches back to map display and the mouse continues to be turned off. Still I find this helpful since you don't have to think about switching mouse 
+mode off when hitting "M".
 
 A simple linear mouse acceleration logic has been added to allow for faster mouse movements based on Rotary Knob speed. It is based on a simple
 linear function defined by the min time/max move and max time/min move points on a simple linear graph (see function `calculateAcceleration` for details).
