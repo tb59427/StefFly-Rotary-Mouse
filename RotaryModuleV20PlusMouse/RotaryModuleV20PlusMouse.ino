@@ -63,27 +63,23 @@ constexpr float b = shortCutoff - a*maxMouseMove;
 // Use other pins if you wish, but performance may suffer.
 // Avoid using pins that have LED's attached.
 // To reverse the direction of the encoder, you only need to change the order of the interrupt pins. E.g. myEnc(3, 2) or myEnc(2, 3)
-Encoder myEnc(3, 2);
-long oldPosition  = -999;
-unsigned long positionExtTime1 = 0;
-unsigned long positionExtTimePrev1 = 0; 
-unsigned long previousMoveTime1 = 0;
-unsigned long currentMoveTime1= 0;
 
+Encoder myEnc0(3, 2);
+long oldPosition  = -999;
+unsigned long positionTime1 = 0;
+unsigned long positionTimePrev1 = 0; 
 
 // These are the pins to which the rotary encoder 1 is connected.
 // Pins 0,1 are the interrupt pins on a Leonardo/Uno, which give best performance with a rotary encoder.
 // Use other pins if you wish, but performance may suffer.
 // Avoid using pins that have LED's attached.
 // To reverse the direction of the encoder, you only need to change the order of the interrupt pins. E.g. myEnc2(1, 0) or myEnc2(0, 1)
-Encoder myEnc2(1, 0);
+
+Encoder myEnc1(1, 0);
 long oldPosition2  = -999;
 boolean isSTF = false;
-unsigned long positionExtTime2 = 0;
-unsigned long positionExtTimePrev2 = 0;
-
-unsigned long previousMoveTime2 = 0;
-unsigned long currentMoveTime2 = 0;
+unsigned long positionTime2 = 0;
+unsigned long positionTimePrev2 = 0;
 
 // Globs (should really be part of the Encoder class) for debouncing
 unsigned long debounceTime = 30;    //min ms between two accepted reads with different reading
@@ -105,7 +101,7 @@ void setup() {
   //  Serial.println("Setup Pushbutton Mouse test:");
 }
 
-unsigned long calculateAcceleration(unsigned long previousDelta, unsigned long currentDelta) {
+unsigned long calculateAcceleration(unsigned long currentDelta) {
 
     unsigned long ms = currentDelta;
     float ticks;
@@ -118,8 +114,10 @@ unsigned long calculateAcceleration(unsigned long previousDelta, unsigned long c
         ms = shortCutoff;
       }
 
+      // calculate ticks derived from linear function
       ticks = a*ms + b;
 
+      // return ticks - but cast to unsigned long as mouse can not move fractions
       return (unsigned long) ticks;
 
     }
@@ -133,20 +131,18 @@ void loop() {
 
   // read Encoder 0
   
-  long newPosition = myEnc.read() / accel;
+  long newPosition = myEnc0.read() / accel;
   if (newPosition != oldPosition) {
     // Position has changed calculate timing of 2 consecutive reads with changed positions
     checktime = millis();
     // Position has changed calculate timing of 2 consecutive reads with changed positions
-    previousMoveTime1 = positionExtTime1 - positionExtTimePrev1;   //record previous time between positive reads
-    positionExtTimePrev1 = positionExtTime1;                       //previous reading time becomes Prev time
-    positionExtTime1 = checktime;                                   //record this reading time
-    currentMoveTime1 = positionExtTime1 - positionExtTimePrev1;    //record time between this read and previous read
-    readingDelta1 = checktime - positionExtTimePrev1;
+    positionTimePrev1 = positionTime1;                       //previous reading time becomes Prev time
+    positionTime1 = checktime;                                  //record this reading time
+    readingDelta1 = checktime - positionTimePrev1;
 
     // if time between changed readings is > debounceTime, we assume a non-bouncing read and do something
     if (readingDelta1 > debounceTime) {
-      mouseticks = calculateAcceleration (previousMoveTime1,currentMoveTime1);
+      mouseticks = calculateAcceleration (readingDelta1);
 
       if (newPosition > oldPosition) {
         if (mouse_active) {
@@ -170,21 +166,19 @@ void loop() {
 
   // read Encoder 1
   
-  long newPosition2 = myEnc2.read() / accel;
+  long newPosition2 = myEnc1.read() / accel;
   if (newPosition2 != oldPosition2) {
 
     // calculate timing of 2 consecutive reads with changed positions
     checktime = millis();
-    previousMoveTime2 = positionExtTime2 - positionExtTimePrev2;
-    positionExtTimePrev2 = positionExtTime2;                  //previous reading time becomes Prev time
-    positionExtTime2 = checktime;                              //record this reading time
-    currentMoveTime2 = positionExtTime2 - positionExtTimePrev2;
-    readingDelta2 = checktime - positionExtTimePrev2;
+    positionTimePrev2 = positionTime2;                   //previous reading time becomes Prev time
+    positionTime2 = checktime;                              //record this reading time
+    readingDelta2 = checktime - positionTimePrev2;
 
     // if time between changed readings is > debounceTime, we assume a non-bouncing read and do something
     if (readingDelta2 > debounceTime) {
 
-      mouseticks = calculateAcceleration (previousMoveTime2,currentMoveTime2);     
+      mouseticks = calculateAcceleration (readingDelta2);     
 
       if (newPosition2 > oldPosition2) {
         if (mouse_active) {
