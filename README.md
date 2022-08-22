@@ -13,10 +13,10 @@ Changed behaviour of "M" button:
 In case move movements are active and M is pressed, mouse mode is suspended. I.e. normal "menu moves" apply while in the menu. Pressing "X" will restore
 mouse mode.
 
-A simple (and I believe insufficient) mouse acceleration logic has been added to allow for faster mouse movements based on Rotary Knob speed. This needs
-improvement and possibly a state machine instead of my simple logic (see function `calculateAcceleration` for details.
+A simple linear mouse acceleration logic has been added to allow for faster mouse movements based on Rotary Knob speed. It is based on a simple
+linear function defined by the min time/max move and max time/min move points on a simple linear graph (see function `calculateAcceleration` for details.
 
 Cleanup covers mostly code fragments oviously left over from some previous versions of the file(s) and compression of the main if-then-else logic around
-mouse active in the main loop.
+mouse active in the main loop. Still some cleanup to do.
 
 Use at your own risk.
