@@ -14,6 +14,28 @@
 #include <Mouse.h>
 #include <Keyboard.h>
 
+// GOBAL DEFINITIONS - change these for different behaviour
+//
+// min ms between two accepted reads with different reading - CHANGE this for different timing
+#define DEBOUNCETIME 25
+
+// delay used to debounce button presses - this is still based on old code with delay. Will have to be changed to timing based
+#define DEBOUNCEDELAY 300
+
+//min mouse move distance
+#define MOUSEMOVEDISTANCE 10
+
+//max mouse move acceleration - mouse will be moved times this factor in max accel
+#define MAXMOUSEACCEL 4
+
+//max time between rotary reads considered in accel calculations in ms
+#define LONGCUTOFF 200
+
+//min time between rotary reads considered in accel calculation in ms
+#define SHORTCUTOFF DEBOUNCETIME
+
+// DO NOT TOUCH ANYTHING BEYOND THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING :-)
+
 // This is an acceleration factor. Use between 1 and 8 to suit how quickly the volume goes up or down.
 int accel = 2;
 
@@ -25,26 +47,27 @@ int QuickMenu = 16;
 int ESC = 15;
 
 // debounce delay for key pushes
-int debounce_delay = 300;
+int debounce_delay = DEBOUNCEDELAY;
 
 // definitions for mouse move (toggled via FN button)
 boolean mouse_active = false;
 boolean return_to_mouse_mode = false; 
-const int Mouse_Move_Distance = 10;
+unsigned long mouseticks = 0;         //mouse move distance as calculate after each read (in mouse mode)
 
-// variables for mouse acceleration calculation
-unsigned long mouseticks = 0;     //mouse move distance
-
+// Variables for mouse acceleration calculation
+//
 // Stuff for acceleration of mouse pointer 
 // at 200ms or slower, there should be no acceleration.
 // CHANGE if you want different timing
-constexpr float longCutoff = 200;
-constexpr float minMouseMove = Mouse_Move_Distance;
+constexpr float longCutoff = LONGCUTOFF;
+constexpr float minMouseMove = MOUSEMOVEDISTANCE;
 
-// at 30 ms, we want to have maximum mouse move distance
+// at DEBOUNCETIME ms, we want to have maximum mouse move distance
 // CHANGE if you want different timing
-constexpr float shortCutoff = 30;
-constexpr float maxMouseMove = 3*Mouse_Move_Distance;
+constexpr float shortCutoff = DEBOUNCETIME;
+
+// accelerate to max 4*Mouse_Move_Distance - CHANGE if you want different behaviour
+constexpr float maxMouseMove = MAXMOUSEACCEL*MOUSEMOVEDISTANCE;
 
 // To derive the calc. constants, compute as follows:
 // Resolve a linear formular f(x) = a * x + b;
@@ -82,12 +105,10 @@ unsigned long positionTime2 = 0;
 unsigned long positionTimePrev2 = 0;
 
 // Globs (should really be part of the Encoder class) for debouncing
-unsigned long debounceTime = 30;    //min ms between two accepted reads with different reading
 unsigned long readingDelta1 = 0;    //holds the time between two consecutive Rotary Encoder1 Readings
 unsigned long readingDelta2 = 0;    //holds the time between two consecutive Rotary Encoder1 Readings
 
 unsigned long checktime = 0;
-
 
 void setup() {
   pinMode(Encoder_Button1, INPUT_PULLUP);
@@ -122,7 +143,7 @@ unsigned long calculateAcceleration(unsigned long currentDelta) {
 
     }
     else {
-      return Mouse_Move_Distance;
+      return MOUSEMOVEDISTANCE;
     }
 
 }
@@ -140,8 +161,8 @@ void loop() {
     positionTime1 = checktime;                                  //record this reading time
     readingDelta1 = checktime - positionTimePrev1;
 
-    // if time between changed readings is > debounceTime, we assume a non-bouncing read and do something
-    if (readingDelta1 > debounceTime) {
+    // if time between changed readings is > DEBOUNCETIME, we assume a non-bouncing read and do something
+    if (readingDelta1 > DEBOUNCETIME) {
       mouseticks = calculateAcceleration (readingDelta1);
 
       if (newPosition > oldPosition) {
@@ -175,8 +196,8 @@ void loop() {
     positionTime2 = checktime;                              //record this reading time
     readingDelta2 = checktime - positionTimePrev2;
 
-    // if time between changed readings is > debounceTime, we assume a non-bouncing read and do something
-    if (readingDelta2 > debounceTime) {
+    // if time between changed readings is > DEBOUNCETIME, we assume a non-bouncing read and do something
+    if (readingDelta2 > DEBOUNCETIME) {
 
       mouseticks = calculateAcceleration (readingDelta2);     
 
